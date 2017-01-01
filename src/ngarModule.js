@@ -21,22 +21,72 @@ ngar.factory('ngar', function(ngarLoadService, ngarAuthService, ngarManagementSe
   console.log('ngar factory is running');
   return {
     init:function(){
-      ngarLoadService.loadAllApis()
+      return ngarLoadService.loadAllApis()
       .then(ngarAuthService.initAuth)
-      .then(ngarManagementService.init)
+      .then(function(){
+        if (ngarAuthService.status.signedIn){
+          return ngarManagementService.init();
+        } else {
+          return false;
+        }
+      })
       .catch(function(error){
         console.log(error);
       });
     },
+
+    signIn:function(){
+      return ngarAuthService.signIn()
+      .then(ngarManagementService.init);
+    },
+    signOut:function(){
+      return ngarAuthService.signOut();
+    },
+
     get: function(params){
-      ngarReportService.buildRequest(params);
-      return ngarReportService.getData(window.gapi)
+      var requestJson = ngarReportService.buildRequest(params);
+      return ngarReportService.getData(window.gapi, requestJson)
       .then(ngarDataService.parseData)
-      .then(function(data){
-        console.log(data);
-      })
       .catch(function(error){
         console.log(error);
+      });
+    }
+  };
+});
+
+
+ngar.directive('ngarSignedIn', function (ngarAuthService) {
+  return {
+    restrict: 'A',
+    link: function (scope, elem) {
+      scope.$watch(function(){
+        return (ngarAuthService.status.signedIn && ngarAuthService.status.authInitialized);
+      }, function(signedIn){
+        if (signedIn){
+          elem.removeClass('ng-hide');
+        } else {
+          elem.addClass('ng-hide');
+        }
+        // $compile(elem)(scope);
+      });
+    }
+  };
+});
+
+
+ngar.directive('ngarSignedOut', function (ngarAuthService) {
+  return {
+    restrict: 'A',
+    link: function (scope, elem) {
+      scope.$watch(function(){
+        return (!ngarAuthService.status.signedIn && ngarAuthService.status.authInitialized);
+      }, function(signedIn){
+        if (signedIn){
+          elem.removeClass('ng-hide');
+        } else {
+          elem.addClass('ng-hide');
+        }
+        // $compile(elem)(scope);
       });
     }
   };
